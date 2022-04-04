@@ -1,6 +1,6 @@
-const fs = require('fs');
-const readline = require('readline');
-const { google } = require('googleapis');
+import fs = require('fs');
+import readline = require('readline');
+import { google } from 'googleapis';
 
 const homeDir = require('os').homedir();
 const configDir = `${homeDir}/.node-gdrive-downloader`;
@@ -16,7 +16,7 @@ const TOKEN_PATH = `${configDir}/token.json`;
 fs.readFile(`${configDir}/credentials.json`, (err, content) => {
     if (err) return console.log('Error loading client secret file:', err);
     // Authorize a client with credentials, then call the Google Drive API.
-    authorize(JSON.parse(content), listFiles);
+    authorize(JSON.parse(content.toString()), listFiles);
 });
 
 /**
@@ -33,7 +33,7 @@ function authorize(credentials, callback) {
     // Check if we have previously stored a token.
     fs.readFile(TOKEN_PATH, (err, token) => {
         if (err) return getAccessToken(oAuth2Client, callback);
-        oAuth2Client.setCredentials(JSON.parse(token));
+        oAuth2Client.setCredentials(JSON.parse(token.toString()));
         callback(oAuth2Client);
     });
 }

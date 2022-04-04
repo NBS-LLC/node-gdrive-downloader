@@ -1,6 +1,7 @@
 import fs = require('fs');
 import readline = require('readline');
 import { google } from 'googleapis';
+import reader = require('readline-sync');
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
@@ -42,23 +43,22 @@ function getAccessToken(oAuth2Client, callback) {
         access_type: 'offline',
         scope: SCOPES,
     });
+
     console.log('Authorize this app by visiting this url:', authUrl);
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-    });
-    rl.question('Enter the code from that page here: ', (code) => {
-        rl.close();
-        oAuth2Client.getToken(code, (err, token) => {
-            if (err) return console.error('Error retrieving access token', err);
-            oAuth2Client.setCredentials(token);
-            // Store the token to disk for later program executions
-            fs.writeFile(TOKEN_PATH, JSON.stringify(token), (err) => {
-                if (err) return console.error(err);
-                console.log('Token stored to', TOKEN_PATH);
-            });
-            callback(oAuth2Client);
-        });
+    const code = reader.question('Enter the code from that page here: ');
+
+    oAuth2Client.getToken(code, (err, token) => {
+        if (err) return console.error('Error retrieving access token', err);
+        oAuth2Client.setCredentials(token);
+
+        try {
+            fs.writeFileSync(TOKEN_PATH, JSON.stringify(token), { encoding: 'utf-8' });
+            console.log('Token stored to', TOKEN_PATH);
+        } catch (error) {
+            console.error(error);
+        }
+
+        callback(oAuth2Client);
     });
 }
 

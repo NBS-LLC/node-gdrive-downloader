@@ -1,4 +1,5 @@
 {
+    "extends": "@tsconfig/node17/tsconfig.json",
     "ts-node": {
         "transpileOnly": true
     },

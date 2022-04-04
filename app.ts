@@ -81,8 +81,8 @@ function listFiles(auth) {
         fields: 'nextPageToken, files(id, name)',
     }, (err, res) => {
         if (err) return console.log('The API returned an error: ' + err);
-        const files = res.data.files;
-        if (files.length) {
+        const files = res?.data.files;
+        if (files && files.length) {
             console.log('Files:');
             files.map((file) => {
                 console.log(`${file.name} (${file.id})`);

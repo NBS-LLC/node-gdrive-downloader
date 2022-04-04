@@ -9,26 +9,26 @@ const HOME_DIR = require('os').homedir();
 const CONFIG_DIR = `${HOME_DIR}/.node-gdrive-downloader`;
 const TOKEN_PATH = `${CONFIG_DIR}/token.json`;
 
-const contents = fs.readFileSync(`${CONFIG_DIR}/credentials.json`, { encoding: 'utf-8' });
-authorize(JSON.parse(contents), listFiles);
+const credentials = fs.readFileSync(`${CONFIG_DIR}/credentials.json`, { encoding: 'utf-8' });
+authorize(JSON.parse(credentials), listFiles);
 
 /**
  * Create an OAuth2 client with the given credentials, and then execute the
  * given callback function.
- * @param {Object} credentials The authorization client credentials.
- * @param {function} callback The callback to call with the authorized client.
+ * @param credentials The authorization client credentials.
+ * @param callback The callback to call with the authorized client.
  */
 function authorize(credentials, callback) {
     const { client_secret, client_id, redirect_uris } = credentials.installed;
-    const oAuth2Client = new google.auth.OAuth2(
-        client_id, client_secret, redirect_uris[0]);
+    const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
 
-    // Check if we have previously stored a token.
-    fs.readFile(TOKEN_PATH, (err, token) => {
-        if (err) return getAccessToken(oAuth2Client, callback);
-        oAuth2Client.setCredentials(JSON.parse(token.toString()));
+    try {
+        const token = fs.readFileSync(TOKEN_PATH, { encoding: 'utf-8' });
+        oAuth2Client.setCredentials(JSON.parse(token));
         callback(oAuth2Client);
-    });
+    } catch (error) {
+        getAccessToken(oAuth2Client, callback)
+    }
 }
 
 /**

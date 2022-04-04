@@ -1,0 +1,15 @@
+{
+  "name": "gdrive-downloader",
+  "version": "1.0.0",
+  "description": "A command line tool for downloading files from Google Drive.",
+  "main": "app.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Nick Derevjanik",
+  "license": "ISC",
+  "devDependencies": {
+    "ts-node": "^10.7.0",
+    "typescript": "^4.6.3"
+  }
+}

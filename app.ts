@@ -12,16 +12,16 @@ const TOKEN_PATH = `${CONFIG_DIR}/token.json`;
 
 (async () => {
     const credentials = fs.readFileSync(`${CONFIG_DIR}/credentials.json`, { encoding: 'utf-8' });
-    await authorize(JSON.parse(credentials), listFiles);
+    const auth = await authorize(JSON.parse(credentials));
+    await listFiles(auth);
 })();
 
 /**
  * Create an OAuth2 client with the given credentials, and then execute the
  * given callback function.
  * @param credentials The authorization client credentials.
- * @param callback The callback to call with the authorized client.
  */
-async function authorize(credentials, callback) {
+async function authorize(credentials): Promise<OAuth2Client> {
     const { client_secret, client_id, redirect_uris } = credentials.installed;
     const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
 
@@ -33,16 +33,16 @@ async function authorize(credentials, callback) {
     }
 
     oAuth2Client.setCredentials(token);
-    callback(oAuth2Client);
+    return oAuth2Client;
 }
 
 /**
  * Get and store new token after prompting for user authorization, and then
  * execute the given callback with the authorized OAuth2 client.
- * @param oAuth2Client The OAuth2 client to get token for.
+ * @param auth The OAuth2 client to get token for.
  */
-async function getAccessToken(oAuth2Client: OAuth2Client): Promise<AccessToken> {
-    const authUrl = oAuth2Client.generateAuthUrl({
+async function getAccessToken(auth: OAuth2Client): Promise<AccessToken> {
+    const authUrl = auth.generateAuthUrl({
         access_type: 'offline',
         scope: SCOPES,
     });
@@ -51,7 +51,7 @@ async function getAccessToken(oAuth2Client: OAuth2Client): Promise<AccessToken> 
     const code = reader.question('Enter the code from that page here: ');
 
     try {
-        const { tokens } = await oAuth2Client.getToken(code);
+        const { tokens } = await auth.getToken(code);
         try {
             fs.writeFileSync(TOKEN_PATH, JSON.stringify(tokens), { encoding: 'utf-8' });
             console.log('Token stored to', TOKEN_PATH);
@@ -68,24 +68,25 @@ async function getAccessToken(oAuth2Client: OAuth2Client): Promise<AccessToken> 
 
 /**
  * Lists the names and IDs of up to 10 files.
- * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
+ * @param auth An authorized OAuth2 client.
  */
-function listFiles(auth) {
+async function listFiles(auth: OAuth2Client) {
     const drive = google.drive({ version: 'v3', auth });
-    drive.files.list({
+
+    const response = await drive.files.list({
         // q: "'1hPyRfnkuCAGOVvmPdVFI9UYp_98-rHLN' in parents",
         pageSize: 10,
         fields: 'nextPageToken, files(id, name)',
-    }, (err, res) => {
-        if (err) return console.log('The API returned an error: ' + err);
-        const files = res?.data.files;
-        if (files && files.length) {
-            console.log('Files:');
-            files.map((file) => {
-                console.log(`${file.name} (${file.id})`);
-            });
-        } else {
-            console.log('No files found.');
-        }
     });
+
+    const files = response.data.files;
+
+    if (files && files.length) {
+        console.log('Files:');
+        files.map((file) => {
+            console.log(`${file.name} (${file.id})`);
+        });
+    } else {
+        console.log('No files found.');
+    }
 }

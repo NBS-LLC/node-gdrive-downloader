@@ -1,7 +1,7 @@
-import fs = require('fs');
-import readline = require('readline');
+import fs from 'fs';
+import { OAuth2Client } from 'google-auth-library';
 import { google } from 'googleapis';
-import reader = require('readline-sync');
+import reader from 'readline-sync';
 
 // If modifying these scopes, delete token.json.
 const SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
@@ -35,10 +35,10 @@ function authorize(credentials, callback) {
 /**
  * Get and store new token after prompting for user authorization, and then
  * execute the given callback with the authorized OAuth2 client.
- * @param {google.auth.OAuth2} oAuth2Client The OAuth2 client to get token for.
- * @param {getEventsCallback} callback The callback for the authorized client.
+ * @param oAuth2Client The OAuth2 client to get token for.
+ * @param callback The callback for the authorized client.
  */
-function getAccessToken(oAuth2Client, callback) {
+function getAccessToken(oAuth2Client: OAuth2Client, callback) {
     const authUrl = oAuth2Client.generateAuthUrl({
         access_type: 'offline',
         scope: SCOPES,
@@ -48,7 +48,7 @@ function getAccessToken(oAuth2Client, callback) {
     const code = reader.question('Enter the code from that page here: ');
 
     oAuth2Client.getToken(code, (err, token) => {
-        if (err) return console.error('Error retrieving access token', err);
+        if (err || !token) return console.error('Error retrieving access token', err);
         oAuth2Client.setCredentials(token);
 
         try {

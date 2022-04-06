@@ -73,20 +73,25 @@ async function getAccessToken(auth: OAuth2Client): Promise<AccessToken> {
 async function listFiles(auth: OAuth2Client) {
     const drive = google.drive({ version: 'v3', auth });
 
-    const response = await drive.files.list({
-        // q: "'1hPyRfnkuCAGOVvmPdVFI9UYp_98-rHLN' in parents",
-        pageSize: 10,
-        fields: 'nextPageToken, files(id, name)',
-    });
-
-    const files = response.data.files;
-
-    if (files && files.length) {
-        console.log('Files:');
-        files.map((file) => {
-            console.log(`${file.name} (${file.id})`);
+    let pageToken: string | undefined = undefined;
+    do {
+        const response = await drive.files.list({
+            q: "'1hPyRfnkuCAGOVvmPdVFI9UYp_98-rHLN' in parents",
+            pageSize: 1000,
+            fields: 'nextPageToken, files(id, name)',
+            pageToken: pageToken
         });
-    } else {
-        console.log('No files found.');
-    }
+
+        pageToken = response.data.nextPageToken;
+        const files = response.data.files;
+
+        if (files && files.length) {
+            console.log('Files:');
+            files.map((file) => {
+                console.log(`${file.name} (${file.id})`);
+            });
+        } else {
+            console.log('No files found.');
+        }
+    } while (pageToken);
 }

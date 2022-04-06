@@ -1,6 +1,7 @@
 import fs from 'fs';
 import { Credentials as AccessToken, OAuth2Client } from 'google-auth-library';
 import { google } from 'googleapis';
+import { performance } from 'perf_hooks';
 import reader from 'readline-sync';
 
 // If modifying these scopes, delete token.json.
@@ -13,7 +14,8 @@ const TOKEN_PATH = `${CONFIG_DIR}/token.json`;
 (async () => {
     const credentials = fs.readFileSync(`${CONFIG_DIR}/credentials.json`, { encoding: 'utf-8' });
     const auth = await authorize(JSON.parse(credentials));
-    await listFiles(auth);
+    await downloadFiles(auth, '/mnt/raid1/private/selahrain');
+    // TODO: Make downloads resumable
 })();
 
 /**
@@ -67,18 +69,18 @@ async function getAccessToken(auth: OAuth2Client): Promise<AccessToken> {
 }
 
 /**
- * Lists the names and IDs of up to 10 files.
+ * Download media files.
  * @param auth An authorized OAuth2 client.
  */
-async function listFiles(auth: OAuth2Client) {
+async function downloadFiles(auth: OAuth2Client, destination: string) {
     const drive = google.drive({ version: 'v3', auth });
 
     let pageToken: string | undefined = undefined;
     do {
         const response = await drive.files.list({
-            q: "'1hPyRfnkuCAGOVvmPdVFI9UYp_98-rHLN' in parents",
+            q: "'1hPyRfnkuCAGOVvmPdVFI9UYp_98-rHLN' in parents", // TODO: Search for the parent folder id based on name
             pageSize: 1000,
-            fields: 'nextPageToken, files(id, name)',
+            fields: 'nextPageToken, files(id, name, size)',
             pageToken: pageToken
         });
 
@@ -86,12 +88,39 @@ async function listFiles(auth: OAuth2Client) {
         const files = response.data.files;
 
         if (files && files.length) {
-            console.log('Files:');
-            files.map((file) => {
-                console.log(`${file.name} (${file.id})`);
-            });
+            const start = performance.now();
+
+            let totalSizeBytes = 0;
+            await Promise.all(files.map(async (file) => {
+                totalSizeBytes += parseInt(file.size as string, 10);
+                await downloadFile(auth, file.id as string, file.name as string, destination);
+            }));
+
+            const end = performance.now();
+            const totalSizeKB = totalSizeBytes / 1000;
+            const elapsedSec = (end - start) / 1000;
+            const speed = totalSizeKB / elapsedSec;
+            console.log('Download rate:', round(speed), 'KB per second');
         } else {
             console.log('No files found.');
         }
     } while (pageToken);
+}
+
+async function downloadFile(auth: OAuth2Client, fileId: string, filename: string, destination: string) {
+    const drive = google.drive({ version: 'v3', auth });
+    const response = await drive.files.get({ fileId: fileId, alt: 'media' }, { responseType: 'arraybuffer' });
+
+    const destFullPath = `${destination}/${filename}`;
+    fs.writeFileSync(destFullPath, Buffer.from(response.data as ArrayBuffer), 'binary');
+    console.log('Downloaded file to', destFullPath);
+}
+
+function round(value: number): number {
+    const formattedValue = value.toLocaleString('en', {
+        useGrouping: false,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+    return Number(formattedValue);
 }

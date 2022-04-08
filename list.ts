@@ -4,7 +4,7 @@ import { google } from 'googleapis';
 import path from 'path';
 import { authorize } from './auth';
 
-const TRIAL_RUN = true;
+const TRIAL_RUN = false;
 const OUTPUT_PATH = './out';
 const MODEL_NAME = 'selahrain';
 
@@ -12,21 +12,44 @@ const MODEL_NAME = 'selahrain';
     fs.mkdirSync(OUTPUT_PATH, { recursive: true });
 
     const auth = await authorize();
-    const mediaFiles = await fetchMediaFiles(auth);
+    const fileFolder = await fetchFolderByName(auth, 'amy');
+    console.log(JSON.stringify(fileFolder, null, '  '));
+    // const mediaFiles = await fetchMediaFiles(auth);
 
-    console.log();
-    console.log(`Discovered ${mediaFiles.length} media files`);
+    // console.log();
+    // console.log(`Discovered ${mediaFiles.length} media files`);
 
-    const outputFilename = `${path.resolve(OUTPUT_PATH)}/${MODEL_NAME}_files.json`;
-    fs.writeFileSync(outputFilename, JSON.stringify(mediaFiles, null, '  '), { encoding: 'utf-8' });
+    // const outputFilename = `${path.resolve(OUTPUT_PATH)}/${MODEL_NAME}_files.json`;
+    // fs.writeFileSync(outputFilename, JSON.stringify(mediaFiles, null, '  '), { encoding: 'utf-8' });
 
-    console.log('Media files list written to', outputFilename);
+    // console.log('Media files list written to', outputFilename);
 })();
 
+interface FolderFile {
+    id: string;
+    name: string;
+}
+
 interface MediaFile {
-    id: string,
-    name: string,
-    size: string
+    id: string;
+    name: string;
+    size: string;
+}
+
+async function fetchFolderByName(auth: OAuth2Client, modelName: string): Promise<FolderFile> {
+    const drive = google.drive({ version: 'v3', auth });
+
+    const response = await drive.files.list({
+        q: `mimeType = 'application/vnd.google-apps.folder' and name = '${modelName}'`,
+        pageSize: 1,
+        fields: 'files(id, name)',
+    });
+
+    if(response.data.files?.length) {
+        return response.data.files[0] as FolderFile;
+    } else {
+        throw new Error(`A folder with the name "${modelName}" was not found.`);
+    }
 }
 
 /**

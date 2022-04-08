@@ -1,15 +1,26 @@
+import fs from 'fs';
 import { OAuth2Client } from 'google-auth-library';
 import { google } from 'googleapis';
+import path from 'path';
 import { authorize } from './auth';
 
-const trialRun = true;
+const TRIAL_RUN = true;
+const OUTPUT_PATH = './out';
+const MODEL_NAME = 'selahrain';
 
 (async () => {
+    fs.mkdirSync(OUTPUT_PATH, { recursive: true });
+
     const auth = await authorize();
     const mediaFiles = await fetchMediaFiles(auth);
 
     console.log();
-    console.log(`Discovered ${mediaFiles.length} media files.`);
+    console.log(`Discovered ${mediaFiles.length} media files`);
+
+    const outputFilename = `${path.resolve(OUTPUT_PATH)}/${MODEL_NAME}_files.json`;
+    fs.writeFileSync(outputFilename, JSON.stringify(mediaFiles, null, '  '), { encoding: 'utf-8' });
+
+    console.log('Media files list written to', outputFilename);
 })();
 
 interface MediaFile {
@@ -31,12 +42,12 @@ async function fetchMediaFiles(auth: OAuth2Client): Promise<MediaFile[]> {
         const response = await drive.files.list({
             q: "'1hPyRfnkuCAGOVvmPdVFI9UYp_98-rHLN' in parents", // TODO: Search for the parent folder id based on name
             orderBy: 'name_natural',
-            pageSize: trialRun ? 10 : 1000,
+            pageSize: TRIAL_RUN ? 10 : 1000,
             fields: 'nextPageToken, files(id, name, size)',
             pageToken: pageToken
         });
 
-        pageToken = trialRun ? undefined : response.data.nextPageToken;
+        pageToken = TRIAL_RUN ? undefined : response.data.nextPageToken;
         const files: MediaFile[] = response.data.files;
 
         if (files) {

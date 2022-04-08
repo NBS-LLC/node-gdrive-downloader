@@ -42,7 +42,7 @@ async function fetchMediaFiles(auth: OAuth2Client): Promise<MediaFile[]> {
         if (files) {
             fileList = fileList.concat(files);
             files.map((file) => {
-                console.log(`${file.name} | ${file.id} | ${file.size}`);
+                console.debug(`${file.name} | ${file.id} | ${file.size}`);
             });
         }
     } while (pageToken);

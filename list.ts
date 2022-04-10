@@ -29,7 +29,7 @@ interface FolderFile {
     name: string;
 }
 
-interface MediaFile {
+export interface MediaFile {
     id: string;
     name: string;
     size: string;

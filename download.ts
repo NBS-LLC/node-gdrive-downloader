@@ -7,10 +7,14 @@ import { MediaFile } from './list';
 
 const FULL_SEND = process.env['FULL_SEND']?.toLowerCase() === 'true';
 const FILES_PATH = './out';
-const MODEL_NAME = 'petradaniels';
+const MODEL_NAME = process.env['MODEL_NAME']?.toLowerCase();
 const DOWNLOAD_PATH = '/mnt/raid1/private';
 
 (async () => {
+    if(!MODEL_NAME) {
+        throw new Error('The MODEL_NAME environment variable must be set.');
+    }
+
     const fileListPath = path.resolve(`${FILES_PATH}/${MODEL_NAME}_files.json`);
     const downloadPath = path.resolve(`${DOWNLOAD_PATH}/${MODEL_NAME}`);
 

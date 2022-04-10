@@ -6,22 +6,29 @@ import { authorize } from './auth';
 
 const TRIAL_RUN = true;
 const OUTPUT_PATH = './out';
-const MODEL_NAME = 'judith';
 
 (async () => {
     fs.mkdirSync(OUTPUT_PATH, { recursive: true });
 
+    const rootFolder = {
+        id: '1AQ27Ov9hwjg3-KXXv-GvPq8hul4nxafV',
+        name: 'Private'
+    };
+
     const auth = await authorize();
-    const fileFolder = await fetchFolderByName(auth, MODEL_NAME);
-    const mediaFiles = await fetchMediaFiles(auth, fileFolder);
+    const modelFolders = await fetchModelFolders(auth, rootFolder);
 
-    console.log();
-    console.log(`Discovered ${mediaFiles.length} media files`);
+    for (const modelFolder of modelFolders) {
+        const fileFolder = await fetchFolderByName(auth, modelFolder.name);
+        const mediaFiles = await fetchMediaFiles(auth, fileFolder);
+        console.log(`Discovered ${mediaFiles.length} media files`);
 
-    const outputFilename = `${path.resolve(OUTPUT_PATH)}/${MODEL_NAME}_files.json`;
-    fs.writeFileSync(outputFilename, JSON.stringify(mediaFiles, null, '  '), { encoding: 'utf-8' });
+        const outputFilename = `${path.resolve(OUTPUT_PATH)}/${modelFolder.name}_files.json`;
+        fs.writeFileSync(outputFilename, JSON.stringify(mediaFiles, null, '  '), { encoding: 'utf-8' });
+        console.log('Media files list written to', outputFilename);
 
-    console.log('Media files list written to', outputFilename);
+        console.log();
+    }
 })();
 
 interface FolderFile {
@@ -34,6 +41,28 @@ export interface MediaFile {
     name: string;
     size: string;
     mimeType: string;
+}
+
+/**
+ * Retrieve a list of model folders.
+ * @param auth An authorized OAuth2 client.
+ * @param rootFolder The root folder containing the model folders.
+ * @returns A promise that resolve toa  list of model folders.
+ */
+async function fetchModelFolders(auth: OAuth2Client, rootFolder: FolderFile): Promise<FolderFile[]> {
+    const drive = google.drive({ version: 'v3', auth });
+
+    const response = await drive.files.list({
+        q: `mimeType = 'application/vnd.google-apps.folder' and '${rootFolder.id}' in parents`,
+        pageSize: 50,
+        fields: 'files(id, name)',
+    });
+
+    if (response.data.files?.length) {
+        return response.data.files as FolderFile[];
+    } else {
+        throw new Error(`Unable to retrieve model folders from "${rootFolder.name}" (${rootFolder.id}).`);
+    }
 }
 
 /**

@@ -4,7 +4,7 @@ import { google } from 'googleapis';
 import path from 'path';
 import { authorize } from './auth';
 
-const TRIAL_RUN = true;
+const FULL_SEND = process.env['FULL_SEND']?.toLowerCase() === 'true';
 const OUTPUT_PATH = './out';
 
 (async () => {
@@ -102,12 +102,12 @@ async function fetchMediaFiles(auth: OAuth2Client, folder: FolderFile): Promise<
         const response = await drive.files.list({
             q: `'${folder.id}' in parents`,
             orderBy: 'name_natural',
-            pageSize: TRIAL_RUN ? 10 : 1000,
+            pageSize: FULL_SEND ? 1000 : 10,
             fields: 'nextPageToken, files(id, name, size, mimeType)',
             pageToken: pageToken
         });
 
-        pageToken = TRIAL_RUN ? undefined : response.data.nextPageToken;
+        pageToken = FULL_SEND ? response.data.nextPageToken : undefined;
         const files: MediaFile[] = response.data.files;
 
         if (files) {

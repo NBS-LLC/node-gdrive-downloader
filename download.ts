@@ -20,23 +20,36 @@ const DOWNLOAD_PATH = '/mnt/raid1/private';
     console.log(`Read ${fileList.length} files.`);
 
     const auth = await authorize();
+    const count = await downloadFiles(auth, fileList, downloadPath);
 
+    console.log(`Download ${count} media files.`);
+})();
+
+async function downloadFiles(auth: OAuth2Client, fileList: MediaFile[], destination: string): Promise<number> {
     let count = 0;
     for (const file of fileList) {
         if (TRIAL_RUN && count >= 10) {
             break;
         }
 
-        await downloadFile(auth, file.id, file.name, downloadPath);
+        await downloadFile(auth, file, destination);
         count++;
     }
-})();
 
-async function downloadFile(auth: OAuth2Client, fileId: string, filename: string, destination: string) {
+    return count;
+}
+
+async function downloadFile(auth: OAuth2Client, file: MediaFile, destination: string) {
     const drive = google.drive({ version: 'v3', auth });
-    const response = await drive.files.get({ fileId: fileId, alt: 'media' }, { responseType: 'arraybuffer' });
+    const response = await drive.files.get({ fileId: file.id, alt: 'media' }, { responseType: 'arraybuffer' });
 
-    const destFullPath = `${destination}/${filename}`;
+    const destFullPath = `${destination}/${file.name}`;
     fs.writeFileSync(destFullPath, Buffer.from(response.data as ArrayBuffer), 'binary');
-    console.log(`Downloaded file to: ${destFullPath}.`);
+
+    const fileStats = fs.statSync(destFullPath);
+    if (fileStats.size == parseInt(file.size, 10)) {
+        console.log(`Downloaded file to: ${destFullPath}.`);
+    } else {
+        console.error(`An error occurred while downloading: ${file.name}.`);
+    }
 }

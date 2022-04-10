@@ -32,8 +32,10 @@ async function downloadFiles(auth: OAuth2Client, fileList: MediaFile[], destinat
             break;
         }
 
-        await downloadFile(auth, file, destination);
-        count++;
+        if (!isDownloaded(file, destination)) {
+            await downloadFile(auth, file, destination);
+            count++;
+        }
     }
 
     return count;
@@ -45,11 +47,14 @@ async function downloadFile(auth: OAuth2Client, file: MediaFile, destination: st
 
     const destFullPath = `${destination}/${file.name}`;
     fs.writeFileSync(destFullPath, Buffer.from(response.data as ArrayBuffer), 'binary');
+    console.log(`Downloaded file to: ${destFullPath}.`);
+}
 
-    const fileStats = fs.statSync(destFullPath);
-    if (fileStats.size == parseInt(file.size, 10)) {
-        console.log(`Downloaded file to: ${destFullPath}.`);
-    } else {
-        console.error(`An error occurred while downloading: ${file.name}.`);
+function isDownloaded(file: MediaFile, destination: string): boolean {
+    try {
+        const fileStats = fs.statSync(`${destination}/${file.name}`);
+        return fileStats.size == parseInt(file.size, 10);
+    } catch {
+        return false;
     }
 }

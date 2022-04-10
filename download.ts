@@ -5,9 +5,9 @@ import path from 'path';
 import { authorize } from './auth';
 import { MediaFile } from './list';
 
-const TRIAL_RUN = true;
+const FULL_SEND = process.env['FULL_SEND']?.toLowerCase() === 'true';
 const FILES_PATH = './out';
-const MODEL_NAME = 'judith';
+const MODEL_NAME = 'petradaniels';
 const DOWNLOAD_PATH = '/mnt/raid1/private';
 
 (async () => {
@@ -51,7 +51,7 @@ async function downloadFiles(auth: OAuth2Client, fileList: MediaFile[], destinat
     let totalSizeBytes = 0;
 
     for (const file of fileList) {
-        if (TRIAL_RUN && count >= 10) {
+        if (!FULL_SEND && count >= 10) {
             break;
         }
 

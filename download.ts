@@ -16,17 +16,40 @@ const DOWNLOAD_PATH = '/mnt/raid1/private';
 
     const fileList: MediaFile[] = JSON.parse(fs.readFileSync(fileListPath, { encoding: 'utf-8' }));
     fs.mkdirSync(downloadPath, { recursive: true });
-
     console.log(`Read ${fileList.length} files.`);
 
-    const auth = await authorize();
-    const count = await downloadFiles(auth, fileList, downloadPath);
+    const fileListSlices = createSlices(fileList, 25);
+    console.log(`Slicing the file list into ${fileListSlices.length} parts.`);
 
-    console.log(`Download ${count} media files.`);
+    const auth = await authorize();
+    const results = await Promise.allSettled(fileListSlices.map(async (slice) => {
+        return await downloadFiles(auth, slice, downloadPath);
+    }));
+
+    displayDownloadStats(results);
 })();
 
-async function downloadFiles(auth: OAuth2Client, fileList: MediaFile[], destination: string): Promise<number> {
+interface DownloadStats {
+    count: number;
+    totalSizeBytes: number;
+}
+
+function displayDownloadStats(results: PromiseSettledResult<DownloadStats>[]) {
     let count = 0;
+    let totalSizeMB = 0;
+    for (const result of results) {
+        if (result.status == 'fulfilled') {
+            count += result.value.count;
+            totalSizeMB += Math.floor((result.value.totalSizeBytes) / (1024 * 1024));
+        }
+    }
+    console.log(`Download ${count} media files (${totalSizeMB}MB).`);
+}
+
+async function downloadFiles(auth: OAuth2Client, fileList: MediaFile[], destination: string): Promise<DownloadStats> {
+    let count = 0;
+    let totalSizeBytes = 0;
+
     for (const file of fileList) {
         if (TRIAL_RUN && count >= 10) {
             break;
@@ -35,10 +58,11 @@ async function downloadFiles(auth: OAuth2Client, fileList: MediaFile[], destinat
         if (!isDownloaded(file, destination)) {
             await downloadFile(auth, file, destination);
             count++;
+            totalSizeBytes += parseInt(file.size, 10);
         }
     }
 
-    return count;
+    return { count, totalSizeBytes };
 }
 
 async function downloadFile(auth: OAuth2Client, file: MediaFile, destination: string) {
@@ -57,4 +81,15 @@ function isDownloaded(file: MediaFile, destination: string): boolean {
     } catch {
         return false;
     }
+}
+
+function createSlices(fileList: MediaFile[], sliceCount = 10): MediaFile[][] {
+    const slices: MediaFile[][] = [];
+
+    const sliceSize = Math.ceil(fileList.length / sliceCount);
+    for (let i = 0; i < fileList.length; i += sliceSize) {
+        slices.push(fileList.slice(i, i + sliceSize));
+    }
+
+    return slices;
 }
